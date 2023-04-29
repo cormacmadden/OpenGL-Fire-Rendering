@@ -1,0 +1,96 @@
+#version 330
+in vec2 TexCoord0;
+in float visibility;
+in vec3 Normal;
+in vec3 FragPos;
+in mat4 World;
+
+vec3 directColor = vec3 (1.0, 1.0, 1.0); // White diffuse surface reflectance
+vec3 directIntensity = vec3 (0.5, 0.5, 0.5); // Light source intensity
+const int toon_color_levels = 3;
+const float toon_scale_factor = 1.0f/toon_color_levels;
+const float darkenCoefficient = 0.5;
+
+struct BaseLight
+{
+	vec3 Color;
+	float AmbientIntensity;
+};
+
+struct Material
+{
+	vec3 AmbientColor;
+	vec3 DiffuseColor;
+	vec3 SpecularColor;
+	int pDiffuse;
+};
+
+uniform sampler2D gSampler;
+uniform Material gMaterial;
+uniform vec3 skyColor;
+uniform vec3 lightPos;  //not working for some reason
+uniform vec3 lightColor;  //not working for some reason
+uniform vec3 viewPos;
+uniform float alpha;
+
+void main(){
+
+	vec3 norm = normalize(Normal);
+
+	//DIFFUSE SHADING
+	mat3 World3f = mat3(World);
+	mat3 WorldToLocal = transpose(World3f);
+	vec3 LightDirectionW = vec3(-0.5f, 0.4f, -0.6f);
+	vec3 LightDirectionWnormal = normalize(LightDirectionW);
+	vec3 LightDirectionL = WorldToLocal * LightDirectionWnormal;
+	LightDirectionL = normalize(LightDirectionL);
+	//float diff = max(dot(norm,-LightDirectionL),0)
+	float DiffuseFactor = max(dot(norm,LightDirectionL),0);
+	//DiffuseFactor = floor(DiffuseFactor * )
+	DiffuseFactor = ceil(DiffuseFactor * toon_color_levels) * toon_scale_factor;
+
+    float ambientStrength = 1.0;
+    vec3 ambient = ambientStrength * vec3(1.0f, 1.0f, 1.0f); //Light Color
+	vec4 Ambient = vec4(ambient, 1.0);
+
+	//POINT LIGHT
+	vec3 lightPos = vec3(0.5f, 15.5f, 0.15f);///Light Pos
+	vec3 lightDir = normalize(lightPos - FragPos);   
+	float distance = length(lightDir);
+
+	float diffFac = max(dot(norm, lightDir), 0.0);
+	vec3 diffuse = diffFac * directIntensity;
+	vec4 Diffuse1 = vec4(diffuse, 1.0);
+
+
+	//DIRECTIONAL LIGHT
+	vec3 new = directColor * directIntensity * DiffuseFactor;
+	vec4 Diffuse = vec4(new, 1.0);
+
+	//SPECULAR
+	float specularStrength = 1.0;
+	vec3 viewDir = normalize((WorldToLocal * viewPos) - FragPos);
+	vec3 reflectDir = reflect(-LightDirectionL, norm);
+	float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+	vec3 specular = specularStrength * spec * vec3(1.0f, 1.0f, 1.0f);  
+	vec4 Specular = vec4(specular, 1.0f);
+
+	vec3 backgroundColor = vec3(1.0,1.0,1.0);
+
+	// minnaert
+    float nDotL = dot(norm, LightDirectionL);
+    float nDotE = dot(norm, viewDir);
+	float intensity = max(clamp(nDotL, 0.0, 0.0) * pow(nDotL * nDotE, darkenCoefficient) / distance, 0);
+
+	//if there's a texture
+	if(gMaterial.pDiffuse == 1){
+		gl_FragColor = mix(vec4(backgroundColor, 1.0),(Ambient+Diffuse+Specular)*texture(gSampler, TexCoord0.xy),visibility);
+		//gl_FragColor = mix(vec4(0.6f,0.87f,0.96f,1.0f),gl_FragColor, 1);
+	}
+	else{
+	vec4 f = mix(vec4(backgroundColor, 1.0),(Ambient+Diffuse+Specular)*vec4(gMaterial.DiffuseColor,1.0),visibility);
+	gl_FragColor = f;
+	//used to mix between the visibility
+	//gl_FragColor = mix(vec4(1.0f,1.0f,1.0f,1.0f),gl_FragColor, visibility);
+	}	
+}

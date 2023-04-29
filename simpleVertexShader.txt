@@ -1,0 +1,40 @@
+#version 330
+
+layout (location = 0) in vec3 vertex_position;
+layout (location = 1) in vec2 vertex_texture;
+layout (location = 2) in vec3 vertex_normal;
+
+out vec2 TexCoord0;
+out float visibility;
+out vec3 Normal;
+out vec3 FragPos;
+out mat4 World;
+
+uniform mat4 view;
+uniform mat4 proj;
+uniform mat4 world;
+uniform float density;
+
+const float gradient = 1.5;
+
+void main(){
+  TexCoord0 = vertex_texture;
+
+  //FOG
+  vec4 worldPosition = world * vec4(vertex_position,1.0);
+  vec4 positionRelativeToCam = view * worldPosition;
+  float distance = length(positionRelativeToCam.xyz);
+  visibility = exp(-pow((distance*density),gradient));
+  visibility = clamp(visibility, 0.0,1.0);
+
+  World = world;
+
+  // Convert position to clip coordinates and pass along
+  Normal = vertex_normal;
+  FragPos = vec3(world * vec4(vertex_position,1.0));
+  gl_Position = proj*view*world * vec4(vertex_position,1.0);
+
+}
+
+
+  

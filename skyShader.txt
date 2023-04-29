@@ -1,0 +1,58 @@
+#version 330
+in vec2 TexCoord0;
+in float visibility;
+in float DiffuseFactor;
+
+vec3 Kd = vec3 (1.0, 1.0, 1.0); // White diffuse surface reflectance
+vec3 Ld = vec3 (1.0, 1.0, 1.0); // Light source intensity
+
+struct DirectionalLight
+{
+	vec3 Color;
+	float AmbientIntensity;
+	float DiffuseIntensity;
+	vec3 Direction;
+};
+
+struct BaseLight
+{
+	vec3 Color;
+	float AmbientIntensity;
+};
+
+struct Material
+{
+	vec3 AmbientColor;
+	vec3 DiffuseColor;
+	vec3 SpecularColor;
+	int pDiffuse;
+};
+
+uniform sampler2D gSampler;
+uniform Material gMaterial;
+uniform vec3 skyColor;
+
+void main(){
+
+	vec3 new = Kd * Ld * DiffuseFactor;
+	vec4 temp = vec4(new, 1.0);
+
+	vec4 AmbientColor = vec4(1.0,1.0,1.0,1.0)* //Directional Light Color
+						vec4(1.0,1.0,1.0,1.0)* //Directional Light Ambient Intensity
+						vec4(gMaterial.AmbientColor,1.0f); //Material Ambient Color
+
+	vec4 DiffuseColor = vec4(0,0,0,0);
+
+	if(DiffuseFactor>0){
+		DiffuseColor = vec4(1.0,1.0,1.0,1.0)* //Directional Light Color
+						vec4(1.0,1.0,1.0,1.0)* //Directional Light Diffuse Intensity
+						vec4(gMaterial.DiffuseColor,1.0f);
+	}
+	vec4 option2 = DiffuseColor + AmbientColor;
+	if(gMaterial.pDiffuse == 1){
+		gl_FragColor = texture(gSampler, TexCoord0.xy);
+	}
+	else{
+	gl_FragColor = mix(vec4(1.0f,1.0f,1.0f,1.0f),vec4(gMaterial.DiffuseColor,1.0f),visibility);
+	}	
+}
